@@ -35,7 +35,6 @@ func main() {
 	}
 
 	fileMtl := o.Mtllib
-	fmt.Printf("%+vqaaaaaa", o.Coord64(1))
 	// Load material lib
 	lib, errMtl := gwob.ReadMaterialLibFromFile(fileMtl, options)
 	if errMtl != nil {

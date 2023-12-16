@@ -34,5 +34,6 @@ func CreateCamera(origin, direction vec3.T, fov, aspectRatio float32) Camera {
 
 type Ray struct {	
 	Origin vec3.T
-	Direction vec3.T 	
+	Direction vec3.T
+	 	
 }

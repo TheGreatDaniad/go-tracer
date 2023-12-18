@@ -18,9 +18,42 @@ type Camera struct {
 	ResolutionY           int
 }
 
+type RayPolygonIntersection struct {
+	ReflectionRay        Ray
+	IntersectionPoint    vec3.T
+	IntersectionDistance float32
+	Polygon              Polygon
+}
+
 func (c Camera) CalculateFocalLength(sensorWidth, fov float64) float64 {
 	return (sensorWidth / 2) / math.Tan(fov/2*(math.Pi/180))
 }
+
+func (c Camera) Render(s *Space) {
+	rays := c.CreateRays()
+	for _, ray := range rays {
+		intersections := make([]RayPolygonIntersection, len(s.Geometries))
+		for _, geometry := range s.Geometries {
+			polygons := (*geometry).GetGeometryData().Polygons
+			for _, polygon := range polygons {
+				intersects, dis, r := polygon.Intersect(ray)
+				if intersects {
+					intersections = append(intersections, RayPolygonIntersection{r, vec3.Add(&ray.Origin, ray.Direction.Scale(dis)), dis, polygon})
+				}
+			}
+		}
+		// find shortest distance
+		if len(intersections) > 0 {
+			intersection := intersections[0]
+			for _, i := range intersections {
+				if i.IntersectionDistance < intersection.IntersectionDistance {
+					intersection = i
+				}
+			}
+		}
+	}
+}
+
 func CreateCamera(origin, direction vec3.T, fov, aspectRatio float32, resolutionX, resolutionY int) Camera {
 	c := Camera{}
 	c.Origin = origin
@@ -52,15 +85,12 @@ func calculateRayDirection(camera Camera, pixelX, pixelY int) vec3.T {
 	screenX := 2.0*ndcX - 1.0
 	screenY := 1.0 - 2.0*ndcY
 	screenX *= camera.AspectRatio * camera.Width / camera.Height
-
 	direction := vec3.T{screenX, screenY, -camera.FocalLength}
 	direction = direction.Normalized()
-
 	crossResult := vec3.Cross(&vec3.T{0, 0, -1}, &camera.Direction)
 	rotationAxis := crossResult.Normalize()
 	rotationAngle := math.Acos(float64(vec3.Dot(&vec3.T{0, 0, -1}, camera.Direction.Normalize())))
 	direction = rotateVector(direction, *rotationAxis, float32(rotationAngle))
-
 	return direction
 }
 
@@ -69,8 +99,8 @@ func rotateVector(v, axis vec3.T, angle float32) vec3.T {
 	sinAngle := math.Sin(float64(angle))
 
 	term1 := v.Scaled(float32(cosAngle))
-	crossProduct := vec3.Cross(&axis, &v)          
-	term2 := crossProduct.Scaled(float32(sinAngle)) 
+	crossProduct := vec3.Cross(&axis, &v)
+	term2 := crossProduct.Scaled(float32(sinAngle))
 
 	dotProduct := vec3.Dot(&axis, &v)
 	term3 := axis.Scaled(dotProduct * (1 - float32(cosAngle)))

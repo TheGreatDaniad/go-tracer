@@ -1,7 +1,11 @@
 package main
 
 import (
+	"fmt"
+	"image"
+	"image/color"
 	"math"
+	"os"
 
 	"github.com/ungerik/go3d/vec3"
 )
@@ -30,8 +34,13 @@ func (c Camera) CalculateFocalLength(sensorWidth, fov float64) float64 {
 }
 
 func (c Camera) Render(s *Space) {
+	img := image.NewRGBA(image.Rect(0, 0, c.ResolutionX, c.ResolutionY))
+
 	rays := c.CreateRays()
-	for _, ray := range rays {
+	fmt.Printf("%+v\n", rays)
+	os.Exit(0)
+	for i, ray := range rays {
+		fmt.Println("Ray", i)
 		intersections := make([]RayPolygonIntersection, len(s.Geometries))
 		for _, geometry := range s.Geometries {
 			polygons := (*geometry).GetGeometryData().Polygons
@@ -50,8 +59,10 @@ func (c Camera) Render(s *Space) {
 					intersection = i
 				}
 			}
+			img.Set(i, i%c.ResolutionY, color.RGBA{255, 255, 255, 255})
 		}
 	}
+	SaveImage(img, "test.png")
 }
 
 func CreateCamera(origin, direction vec3.T, fov, aspectRatio float32, resolutionX, resolutionY int) Camera {

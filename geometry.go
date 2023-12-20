@@ -119,6 +119,9 @@ func CreateBox(Width float32, Height float32, Depth float32, Origin vec3.T) Box 
 	b.Polygons = polygons
 	return b
 }
+func (b Box) GetGeometryData() GeometryData {
+	return GeometryData{Vertices: b.Vertices, Polygons: b.Polygons}
+}
 
 type Sphere struct {
 	Radius   float32
@@ -167,6 +170,10 @@ func CreateSphere(radius float32, origin vec3.T) Sphere {
 		Vertices: vertices,
 		Polygons: polygons,
 	}
+}
+
+func (s Sphere) GetGeometryData() GeometryData {
+	return GeometryData{Vertices: s.Vertices, Polygons: s.Polygons}
 }
 
 type Plane struct {

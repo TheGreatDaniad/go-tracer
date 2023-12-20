@@ -18,51 +18,48 @@ type Polygon struct {
 	Vertices [3]vec3.T
 }
 
-func (p Polygon) Intersect(r Ray) (bool, float32, Ray) {
-	v0v1 := vec3.Sub(&p.Vertices[1], &p.Vertices[0])
-	v0v2 := vec3.Sub(&p.Vertices[2], &p.Vertices[0])
-	normal := vec3.Cross(&v0v1, &v0v2)
+func (p *Polygon) Intersects(ray Ray) (bool, float32) {
+	const epsilon = 1e-8
 
-	if normal.LengthSqr() < 1e-8 {
-		return false, 0, Ray{}
-	}
-	normal = *normal.Normalize()
+	// Calculate edges
+	edge1 := vec3.Sub(&p.Vertices[1], &p.Vertices[0])
+	edge2 := vec3.Sub(&p.Vertices[2], &p.Vertices[0])
 
-	d := -vec3.Dot(&normal, &p.Vertices[0])
-	t := -(vec3.Dot(&normal, &r.Origin) + d) / vec3.Dot(&normal, &r.Direction)
-	if t < 0 {
-		return false, 0, Ray{}
-	}
+	// Begin calculating determinant - also used to calculate U parameter
+	pvec := vec3.Cross(&ray.Direction, &edge2)
 
-	P := vec3.Add(&r.Origin, r.Direction.Scale(t))
+	// If determinant is near zero, ray lies in plane of triangle
+	det := vec3.Dot(&edge1, &pvec)
 
-	edge0 := vec3.Sub(&p.Vertices[1], &p.Vertices[0])
-	vp0 := vec3.Sub(&P, &p.Vertices[0])
-	C := vec3.Cross(&edge0, &vp0)
-	if vec3.Dot(&normal, &C) < 0 {
-		return false, 0, Ray{}
+	// NOT CULLING
+	if math.Abs(float64(det)) < epsilon {
+		return false, 0
 	}
 
-	edge1 := vec3.Sub(&p.Vertices[2], &p.Vertices[1])
-	vp1 := vec3.Sub(&P, &p.Vertices[1])
-	C = vec3.Cross(&edge1, &vp1)
-	if vec3.Dot(&normal, &C) < 0 {
-		return false, 0, Ray{}
+	invDet := 1.0 / det
+
+	// Calculate distance from V1 to ray origin
+	tvec := vec3.Sub(&ray.Origin, &p.Vertices[0])
+
+	// Calculate U parameter and test bound
+	u := vec3.Dot(&tvec, &pvec) * invDet
+	if u < 0.0 || u > 1.0 {
+		return false, 0
 	}
 
-	edge2 := vec3.Sub(&p.Vertices[0], &p.Vertices[2])
-	vp2 := vec3.Sub(&P, &p.Vertices[2])
-	C = vec3.Cross(&edge2, &vp2)
-	if vec3.Dot(&normal, &C) < 0 {
-		return false, 0, Ray{}
+	// Prepare to test V parameter
+	qvec := vec3.Cross(&tvec, &edge1)
+
+	// Calculate V parameter and test bound
+	v := vec3.Dot(&ray.Direction, &qvec) * invDet
+	if v < 0.0 || u+v > 1.0 {
+		return false, 0
 	}
 
-	// Calculate the reflection ray
-	dotProduct := vec3.Dot(&r.Direction, &normal)
-	reflectedDirection := vec3.Sub(&r.Direction, normal.Scale(2*dotProduct))
-	reflectionRay := Ray{Origin: P, Direction: *reflectedDirection.Normalize()}
+	// Calculate t, the distance from the ray origin to the intersection point
+	t := vec3.Dot(&edge2, &qvec) * invDet
 
-	return true, float32(t), reflectionRay
+	return true, t
 }
 
 type Box struct {

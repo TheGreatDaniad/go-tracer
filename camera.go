@@ -5,7 +5,6 @@ import (
 	"image"
 	"image/color"
 	"math"
-	"os"
 
 	"github.com/ungerik/go3d/vec3"
 )
@@ -13,6 +12,7 @@ import (
 type Camera struct {
 	Origin                vec3.T
 	Direction             vec3.T
+	Up                    vec3.T
 	FieldOfViewHorizontal float32
 	AspectRatio           float32
 	Width                 float32
@@ -20,6 +20,31 @@ type Camera struct {
 	FocalLength           float32
 	ResolutionX           int
 	ResolutionY           int
+}
+
+func (c *Camera) CalculatePixelPosition(x, y int) vec3.T {
+	aspectRatio := float32(c.ResolutionX) / float32(c.ResolutionY)
+
+	pixelSizeX := (2.0 * c.FocalLength * aspectRatio) / float32(c.ResolutionX)
+	pixelSizeY := (2.0 * c.FocalLength) / float32(c.ResolutionY)
+
+	pixelPosX := (float32(x) - float32(c.ResolutionX)/2.0) * pixelSizeX
+	pixelPosY := (float32(y) - float32(c.ResolutionY)/2.0) * pixelSizeY
+
+	// Assuming vec3 library provides these methods
+	right := vec3.Cross(&c.Direction, &c.Up)
+	right = *right.Normalize()
+
+	// Temporary variables for intermediate results
+	focalPoint := c.Direction.Scaled(c.FocalLength)
+	rightOffset := right.Scaled(pixelPosX)
+	upOffset := c.Up.Scaled(pixelPosY)
+
+	// Calculate the pixel world position
+	pixelWorldPos := c.Origin.Added(&focalPoint)
+	r := pixelWorldPos.Add(&rightOffset)
+	r = r.Add(&upOffset)
+	return *r
 }
 
 type RayPolygonIntersection struct {
@@ -37,21 +62,21 @@ func (c Camera) Render(s *Space) {
 	img := image.NewRGBA(image.Rect(0, 0, c.ResolutionX, c.ResolutionY))
 
 	rays := c.CreateRays()
-	fmt.Printf("%+v\n", rays)
-	os.Exit(0)
 	for i, ray := range rays {
-		fmt.Println("Ray", i)
-		intersections := make([]RayPolygonIntersection, len(s.Geometries))
+		var intersections = []RayPolygonIntersection{}
 		for _, geometry := range s.Geometries {
 			polygons := (*geometry).GetGeometryData().Polygons
 			for _, polygon := range polygons {
-				intersects, dis, r := polygon.Intersect(ray)
+				intersects, dis := polygon.Intersects(ray)
 				if intersects {
-					intersections = append(intersections, RayPolygonIntersection{r, vec3.Add(&ray.Origin, ray.Direction.Scale(dis)), dis, polygon})
+					intersection := RayPolygonIntersection{IntersectionDistance: dis}
+					intersections = append(intersections, intersection)
+					fmt.Println("Intersection ", intersection.IntersectionDistance)
+
 				}
 			}
 		}
-		// find shortest distance
+
 		if len(intersections) > 0 {
 			intersection := intersections[0]
 			for _, i := range intersections {
@@ -59,16 +84,18 @@ func (c Camera) Render(s *Space) {
 					intersection = i
 				}
 			}
-			img.Set(i, i%c.ResolutionY, color.RGBA{255, 255, 255, 255})
+			fmt.Println(i%c.ResolutionX, i/c.ResolutionY, intersections)
+			img.Set(i%c.ResolutionX, i/c.ResolutionY, color.RGBA{255, 255, 255, 255})
 		}
 	}
 	SaveImage(img, "test.png")
 }
 
-func CreateCamera(origin, direction vec3.T, fov, aspectRatio float32, resolutionX, resolutionY int) Camera {
+func CreateCamera(origin, direction vec3.T, up vec3.T, fov, aspectRatio float32, resolutionX, resolutionY int) Camera {
 	c := Camera{}
 	c.Origin = origin
 	c.Direction = direction
+	c.Up = up
 	c.FieldOfViewHorizontal = fov
 	c.AspectRatio = aspectRatio
 	c.Width = 1
@@ -91,32 +118,9 @@ func (camera Camera) CreateRays() []Ray {
 }
 
 func calculateRayDirection(camera Camera, pixelX, pixelY int) vec3.T {
-	ndcX := (float32(pixelX) + 0.5) / float32(camera.ResolutionX)
-	ndcY := (float32(pixelY) + 0.5) / float32(camera.ResolutionY)
-	screenX := 2.0*ndcX - 1.0
-	screenY := 1.0 - 2.0*ndcY
-	screenX *= camera.AspectRatio * camera.Width / camera.Height
-	direction := vec3.T{screenX, screenY, -camera.FocalLength}
-	direction = direction.Normalized()
-	crossResult := vec3.Cross(&vec3.T{0, 0, -1}, &camera.Direction)
-	rotationAxis := crossResult.Normalize()
-	rotationAngle := math.Acos(float64(vec3.Dot(&vec3.T{0, 0, -1}, camera.Direction.Normalize())))
-	direction = rotateVector(direction, *rotationAxis, float32(rotationAngle))
+	pixelPosition := camera.CalculatePixelPosition(pixelX, pixelY)
+	direction := vec3.Sub(&pixelPosition, &camera.Origin)
 	return direction
-}
-
-func rotateVector(v, axis vec3.T, angle float32) vec3.T {
-	cosAngle := math.Cos(float64(angle))
-	sinAngle := math.Sin(float64(angle))
-
-	term1 := v.Scaled(float32(cosAngle))
-	crossProduct := vec3.Cross(&axis, &v)
-	term2 := crossProduct.Scaled(float32(sinAngle))
-
-	dotProduct := vec3.Dot(&axis, &v)
-	term3 := axis.Scaled(dotProduct * (1 - float32(cosAngle)))
-
-	return *term1.Add(&term2).Add(&term3)
 }
 
 type Ray struct {

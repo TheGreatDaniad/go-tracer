@@ -27,8 +27,15 @@ go run .
 
 ## Progress
 
-_Dec 20, 2023_
+_Dec 19, 2023_
 
 first render is done. With ony one sphere and a camera pointing at it, I get only a diagonal line as the result in output image, which is obviously wrong.
 
-![Alt text](./readme-images//test.png "Optional title")
+![Alt text](./readme-images//1.png "Optional title")
+
+
+_Dec 20, 2023_
+
+found the bug in the code. It was related to calculation of ray directions for each pixel.
+
+![Alt text](./readme-images//2.png "Optional title")

@@ -1,9 +1,9 @@
 package main
 
-import "github.com/ungerik/go3d/vec3"
+import "image/color"
 
 type Material struct {
-	Color        vec3.T
+	Color        color.RGBA
 	Reflectivity float32
 	Opacity      float32
 	Diffuse      float32

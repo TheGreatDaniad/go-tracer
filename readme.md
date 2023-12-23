@@ -39,3 +39,11 @@ _Dec 20, 2023_
 found the bug in the code. It was related to calculation of ray directions for each pixel.
 
 ![Alt text](./readme-images//2.png "Optional title")
+
+
+_Dec 23, 2023_
+
+Added basic light model (omni light) and a very basic shading based on lambertian shading model
+which calculate the color of the surface based on the surface normal and light direction
+
+![Alt text](./readme-images//3.png "Optional title")

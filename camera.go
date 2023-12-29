@@ -60,11 +60,11 @@ func (c *Camera) CalculatePixelPosition(x, y int) vec3.T {
 	return *r
 }
 
-type RayPolygonIntersection struct {
+type RayFaceIntersection struct {
 	ReflectionRay        Ray
 	IntersectionPoint    vec3.T
 	IntersectionDistance float32
-	Polygon              Polygon
+	Face                 Face
 	Material             Material
 }
 
@@ -74,21 +74,19 @@ func (c Camera) CalculateFocalLength(sensorWidth, fov float64) float64 {
 
 func (c Camera) Render(s *Space) {
 	img := image.NewRGBA(image.Rect(0, 0, c.ResolutionX, c.ResolutionY))
-
 	rays := c.CreateRays()
 	for i, ray := range rays {
-		var intersections = []RayPolygonIntersection{}
+		var intersections = []RayFaceIntersection{}
 		for _, geometry := range s.Geometries {
-			polygons := (*geometry).GetGeometryData().Polygons
-			for _, polygon := range polygons {
-				intersects, dis := polygon.Intersects(ray)
+			Faces := (*geometry).GetGeometryData().Faces
+			for _, Face := range Faces {
+				intersects, dis := Face.Intersects(ray, (*geometry).GetGeometryData().Vertices)
 				if intersects {
-					intersection := RayPolygonIntersection{IntersectionDistance: dis, Polygon: polygon, Material: ((*geometry).GetGeometryData().Material)}
+					intersection := RayFaceIntersection{IntersectionDistance: dis, Face: Face, Material: ((*geometry).GetGeometryData().Material)}
 					intersections = append(intersections, intersection)
 				}
 			}
 		}
-
 		if len(intersections) > 0 {
 			var finalColor color.RGBA
 			intersection := intersections[0]
@@ -97,10 +95,10 @@ func (c Camera) Render(s *Space) {
 					intersection = i
 				}
 			}
-			for _, light := range s.Lights {
-				lightContribution := light.CalculateColorContribution(intersection.IntersectionPoint, intersection.Polygon.Normal, intersection.Material.Color)
-				finalColor = AddColors(finalColor, lightContribution)
-			}
+			// for _, light := range s.Lights {
+			// lightContribution := light.CalculateColorContribution(intersection.IntersectionPoint, intersection.Face.Normal, intersection.Material.Color)
+			// finalColor = AddColors(finalColor, lightContribution)
+			// }
 			finalColor = AddColors(finalColor, intersection.Material.Color)
 			img.Set(i%c.ResolutionX, i/c.ResolutionY, finalColor)
 		}

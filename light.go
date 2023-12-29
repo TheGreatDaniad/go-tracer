@@ -14,21 +14,16 @@ type Light struct {
 	Attenuation float32
 }
 
-// creates a basic light
 func CreateLight(position vec3.T, color color.RGBA, intensity, attenuation float32) Light {
 	return Light{position, color, intensity, attenuation}
 }
 
 func (l Light) CalculateColorContribution(point, normal vec3.T, surfaceColor color.RGBA) color.RGBA {
-	// Direction from point to light
 	lightDir := vec3.Sub(&l.Position, &point)
 	lightDir = *lightDir.Normalize()
-
-	// Dot product of light direction and normal - Lambert's Cosine Law
 	dot := vec3.Dot(&normal, &lightDir)
 	if dot > 0 {
 		diffuseIntensity := dot * l.Intensity * 10
-		// Attenuation (optional, can be omitted or modified as needed)
 		distance := vec3.Distance(&l.Position, &point)
 		attenuation := 1 / (1 + l.Attenuation*distance*distance)
 		diffuseIntensity *= attenuation

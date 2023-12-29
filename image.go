@@ -20,7 +20,6 @@ func CreateSampleImage() {
 			b := uint8((x * y / 16) % 255)
 			c := color.RGBA{r, g, b, 255}
 			img.Set(x, y, c)
-			
 		}
 	}
 

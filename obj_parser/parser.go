@@ -13,11 +13,9 @@ import (
 type Normal struct {
 	X, Y, Z float64
 }
-
 type TextureCoordinate struct {
 	U, V float64
 }
-
 type Face struct {
 	VertexIndices            []int
 	TextureCoordinateIndices []int
@@ -44,30 +42,30 @@ func ParseObjFile(filename string) (*Obj, error) {
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" || strings.HasPrefix(line, "#") {
-			continue // Skip empty lines and comments
+			continue 
 		}
 
 		fields := strings.Fields(line)
 		switch fields[0] {
-		case "v": // Vertex
+		case "v":
 			vertex, err := parseVertex(fields)
 			if err != nil {
 				return nil, err
 			}
 			obj.Vertices = append(obj.Vertices, vertex)
-		case "vt": // Texture coordinate
+		case "vt": 
 			tc, err := parseTextureCoordinate(fields)
 			if err != nil {
 				return nil, err
 			}
 			obj.TextureCoordinates = append(obj.TextureCoordinates, tc)
-		case "vn": // Normal
+		case "vn": 
 			normal, err := parseNormal(fields)
 			if err != nil {
 				return nil, err
 			}
 			obj.Normals = append(obj.Normals, normal)
-		case "f": // Face
+		case "f":
 			face, err := parseFace(fields)
 			if err != nil {
 				return nil, err

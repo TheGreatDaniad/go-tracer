@@ -3,8 +3,8 @@ package main
 import (
 	"math"
 
-	"github.com/ungerik/go3d/vec3"
 	"github.com/thegreatdaniad/go-tracer/obj_parser"
+	"github.com/ungerik/go3d/vec3"
 )
 
 type Geometry interface {
@@ -30,6 +30,7 @@ type Face struct {
 	VertexIndices            []int
 	TextureCoordinateIndices []int
 	NormalIndices            []int
+	Material                 Material
 }
 
 type Obj struct {
@@ -39,8 +40,56 @@ type Obj struct {
 	Faces              []Face
 }
 
-func ParseObjFile(filename string) (*Obj, error) {
+func (o *Obj) GetGeometryData() GeometryData {
+	return GeometryData{
+		Vertices: o.Vertices,
+		Faces:    o.Faces,
+	}
+}
+func (o *Obj) SetMaterial(material Material) {
+	for i := range o.Faces {
+		o.Faces[i].Material = material
+	}
+}
 
+func ParseObjFile(filename string) (*Obj, error) {
+	o, err := obj_parser.ParseObjFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	newObj := &Obj{
+		Vertices: o.Vertices,
+	}
+
+	for _, tc := range o.TextureCoordinates {
+		newObj.TextureCoordinates = append(newObj.TextureCoordinates, TextureCoordinate{
+			U: tc.U,
+			V: tc.V,
+		})
+	}
+
+	for _, n := range o.Normals {
+		newObj.Normals = append(newObj.Normals, Normal{
+			X: n.X,
+			Y: n.Y,
+			Z: n.Z,
+		})
+	}
+
+	for _, f := range o.Faces {
+		newFace := Face{
+			VertexIndices:            make([]int, len(f.VertexIndices)),
+			TextureCoordinateIndices: make([]int, len(f.TextureCoordinateIndices)),
+			NormalIndices:            make([]int, len(f.NormalIndices)),
+		}
+		copy(newFace.VertexIndices, f.VertexIndices)
+		copy(newFace.TextureCoordinateIndices, f.TextureCoordinateIndices)
+		copy(newFace.NormalIndices, f.NormalIndices)
+		newObj.Faces = append(newObj.Faces, newFace)
+	}
+
+	return newObj, nil
 }
 func (f Face) Intersects(ray Ray, vertices []vec3.T) (bool, float32) {
 	if len(f.VertexIndices) < 3 {

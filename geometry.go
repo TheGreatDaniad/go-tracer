@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/thegreatdaniad/go-tracer/obj_parser"
+	"github.com/ungerik/go3d/mat3"
 	"github.com/ungerik/go3d/vec3"
 )
 
@@ -44,6 +45,54 @@ type Obj struct {
 	TextureCoordinates []TextureCoordinate
 	Normals            []Normal
 	Faces              []Face
+	Origin             vec3.T
+}
+
+func (o *Obj) Rotate(degX, degY, degZ float64) {
+	// Convert degrees to radians
+	radX := degX * math.Pi / 180
+	radY := degY * math.Pi / 180
+	radZ := degZ * math.Pi / 180
+
+	// Rotation matrices for X, Y, Z axes
+	rotX := mat3.T{
+		vec3.T{1, 0, 0},
+		vec3.T{0, float32(math.Cos(radX)), -float32(math.Sin(radX))},
+		vec3.T{0, float32(math.Sin(radX)), float32(math.Cos(radX))},
+	}
+	rotY := mat3.T{
+		vec3.T{float32(math.Cos(radY)), 0, float32(math.Sin(radY))},
+		vec3.T{0, 1, 0},
+		vec3.T{-float32(math.Sin(radY)), 0, float32(math.Cos(radY))},
+	}
+	rotZ := mat3.T{
+		vec3.T{float32(math.Cos(radZ)), -float32(math.Sin(radZ)), 0},
+		vec3.T{float32(math.Sin(radZ)), float32(math.Cos(radZ)), 0},
+		vec3.T{0, 0, 1},
+	}
+
+	for i, vertex := range o.Vertices {
+		// Translate vertex to origin
+		translated := vec3.Sub(&vertex, &o.Origin)
+
+		rotated := rotX.MulVec3(&translated)
+		rotated = rotY.MulVec3(&rotated)
+		rotated = rotZ.MulVec3(&rotated)
+
+		// Translate vertex back
+		o.Vertices[i] = vec3.Add(&rotated, &o.Origin)
+	}
+
+	for i, normal := range o.Normals {
+		normalVec := vec3.T{float32(normal.X), float32(normal.Y), float32(normal.Z)}
+
+		// Apply rotations
+		rotatedNormal := rotX.MulVec3(&normalVec)
+		rotatedNormal = rotY.MulVec3(&rotatedNormal)
+		rotatedNormal = rotZ.MulVec3(&rotatedNormal)
+
+		o.Normals[i] = Normal{(rotatedNormal[0]), (rotatedNormal[1]), (rotatedNormal[2])}
+	}
 }
 
 func (o *Obj) GetGeometryData() GeometryData {

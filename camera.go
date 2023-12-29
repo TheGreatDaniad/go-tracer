@@ -65,6 +65,7 @@ type RayFaceIntersection struct {
 	IntersectionPoint    vec3.T
 	IntersectionDistance float32
 	Face                 Face
+	Geometry             Geometry
 	Material             Material
 }
 
@@ -82,10 +83,11 @@ func (c Camera) Render(s *Space) {
 			for _, Face := range Faces {
 				intersects, dis := Face.Intersects(ray, (*geometry).GetGeometryData().Vertices)
 				if intersects {
-					intersection := RayFaceIntersection{IntersectionDistance: dis, Face: Face, Material: ((*geometry).GetGeometryData().Material)}
+					intersection := RayFaceIntersection{IntersectionDistance: dis, Face: Face, Material: ((*geometry).GetGeometryData().Material), Geometry: *geometry}
 					intersections = append(intersections, intersection)
 				}
 			}
+
 		}
 		if len(intersections) > 0 {
 			var finalColor color.RGBA
@@ -95,10 +97,10 @@ func (c Camera) Render(s *Space) {
 					intersection = i
 				}
 			}
-			// for _, light := range s.Lights {
-			// lightContribution := light.CalculateColorContribution(intersection.IntersectionPoint, intersection.Face.Normal, intersection.Material.Color)
-			// finalColor = AddColors(finalColor, lightContribution)
-			// }
+			for _, light := range s.Lights {
+				lightContribution := light.CalculateColorContribution(intersection.Geometry, intersection.IntersectionPoint, intersection.Face)
+				finalColor = AddColors(finalColor, lightContribution)
+			}
 			finalColor = AddColors(finalColor, intersection.Material.Color)
 			img.Set(i%c.ResolutionX, i/c.ResolutionY, finalColor)
 		}

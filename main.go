@@ -29,8 +29,8 @@ import (
 func main() {
 	var s Space
 	now := time.Now()
-	camera := CreateCamera(vec3.T{-10, -1, 0}, vec3.T{1, 0.5, 0.5}, vec3.T{0, 1, 0}, 90, 1, 600, 600)
-	light := CreateLight(vec3.T{-3, 5, 0}, color.RGBA{255, 255, 255, 255}, 1, 0.1)
+	camera := CreateCamera(vec3.T{-5, 2, 1}, vec3.T{1, 0.0, 0.0}, vec3.T{0, -1, 0}, 90, 1, 600, 600)
+	light := CreateLight(vec3.T{-3, 5, 0}, color.RGBA{214, 153, 88, 255}, 0.2, 0.2)
 	s.AddLight(light)
 	o, err := ParseObjFile("red_cube.obj")
 	if err != nil {

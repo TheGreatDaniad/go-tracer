@@ -47,3 +47,11 @@ Added basic light model (omni light) and a very basic shading based on lambertia
 which calculate the color of the surface based on the surface normal and light direction
 
 ![Alt text](./readme-images//3.png "Optional title")
+
+
+_Dec 29, 2023_
+
+Totally changed geometery representation to comply with standard formats, added .obj 3D file support. 
+if the face normals are not present in obj file they are automatically calculated. 
+Now the engine can render more complex 3d model by importing them as standard obj files.
+![Alt text](./readme-images//4.png "Optional title")

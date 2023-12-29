@@ -13,13 +13,19 @@ type Geometry interface {
 }
 
 type GeometryData struct {
-	Vertices []vec3.T
-	Faces    []Face
-	Material Material
+	Vertices           []vec3.T
+	Faces              []Face
+	Material           Material
+	TextureCoordinates []TextureCoordinate
+	Normals            []Normal
 }
 
 type Normal struct {
-	X, Y, Z float64
+	X, Y, Z float32
+}
+
+func (n Normal) ToVec3() vec3.T {
+	return vec3.T{float32(n.X), float32(n.Y), float32(n.Z)}
 }
 
 type TextureCoordinate struct {
@@ -44,6 +50,7 @@ func (o *Obj) GetGeometryData() GeometryData {
 	return GeometryData{
 		Vertices: o.Vertices,
 		Faces:    o.Faces,
+		Normals:  o.Normals,
 	}
 }
 func (o *Obj) SetMaterial(material Material) {
@@ -62,6 +69,7 @@ func ParseObjFile(filename string) (*Obj, error) {
 		Vertices: o.Vertices,
 	}
 
+	// Copy texture coordinates
 	for _, tc := range o.TextureCoordinates {
 		newObj.TextureCoordinates = append(newObj.TextureCoordinates, TextureCoordinate{
 			U: tc.U,
@@ -69,27 +77,65 @@ func ParseObjFile(filename string) (*Obj, error) {
 		})
 	}
 
-	for _, n := range o.Normals {
-		newObj.Normals = append(newObj.Normals, Normal{
-			X: n.X,
-			Y: n.Y,
-			Z: n.Z,
-		})
+	// Check if normals are provided
+	normalsProvided := len(o.Normals) > 0
+
+	if normalsProvided {
+		for _, n := range o.Normals {
+			newObj.Normals = append(newObj.Normals, Normal{
+				X: float32(n.X),
+				Y: float32(n.Y),
+				Z: float32(n.Z),
+			})
+		}
 	}
 
 	for _, f := range o.Faces {
 		newFace := Face{
 			VertexIndices:            make([]int, len(f.VertexIndices)),
 			TextureCoordinateIndices: make([]int, len(f.TextureCoordinateIndices)),
-			NormalIndices:            make([]int, len(f.NormalIndices)),
+			NormalIndices:            make([]int, len(f.VertexIndices)), // Initialize with the length of VertexIndices
 		}
 		copy(newFace.VertexIndices, f.VertexIndices)
 		copy(newFace.TextureCoordinateIndices, f.TextureCoordinateIndices)
-		copy(newFace.NormalIndices, f.NormalIndices)
+
+		if !normalsProvided {
+			// Calculate normal for this face
+			normal := calculateFaceNormal(newObj.Vertices, newFace.VertexIndices)
+			normalIndex := len(newObj.Normals) // Index of the new normal
+			newObj.Normals = append(newObj.Normals, Normal{X: normal[0], Y: normal[1], Z: normal[2]})
+
+			// Assign the normal index to all vertices of the face
+			for i := range newFace.NormalIndices {
+				newFace.NormalIndices[i] = normalIndex
+			}
+		} else {
+			// If normals are provided, use the original indices
+			copy(newFace.NormalIndices, f.NormalIndices)
+		}
+
 		newObj.Faces = append(newObj.Faces, newFace)
 	}
 
 	return newObj, nil
+}
+func calculateFaceNormal(vertices []vec3.T, vertexIndices []int) [3]float32 {
+	if len(vertexIndices) < 3 {
+		return [3]float32{0, 0, 0}
+	}
+
+	v0 := vertices[vertexIndices[0]]
+	v1 := vertices[vertexIndices[1]]
+	v2 := vertices[vertexIndices[2]]
+
+	edge1 := vec3.Sub(&v1, &v0)
+	edge2 := vec3.Sub(&v2, &v0)
+
+	normalVec := vec3.Cross(&edge1, &edge2)
+
+	normalVec.Normalize()
+
+	return [3]float32{normalVec[0], normalVec[1], normalVec[2]}
 }
 func (f Face) Intersects(ray Ray, vertices []vec3.T) (bool, float32) {
 	if len(f.VertexIndices) < 3 {

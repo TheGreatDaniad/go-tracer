@@ -12,7 +12,6 @@ func CreateSampleImage() {
 	height := 1024
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 
-	// Fill the image with the specified color
 	for y := 0; y < width; y++ {
 		for x := 0; x < height; x++ {
 			r := uint8((x / 4) % 255)

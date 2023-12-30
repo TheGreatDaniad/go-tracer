@@ -29,10 +29,10 @@ import (
 func main() {
 	var s Space
 	now := time.Now()
-	camera := CreateCamera(vec3.T{-5, 2, 1}, vec3.T{1, 0.0, 0.0}, vec3.T{0, -1, 0}, 90, 1, 1000, 1000)
+	camera := CreateCamera(vec3.T{-5, 2, 1}, vec3.T{1, 0.0, 0.0}, vec3.T{0, -1, 0}, 90, 1, 200, 200)
 	light := CreateLight(vec3.T{-3, 7, 2}, color.RGBA{214, 153, 88, 255}, 0.2, 0.2)
 	s.AddLight(light)
-	o, err := ParseObjFile("red_cube.obj")
+	o, err := ParseObjFile("objects/meerschaum_new.obj")
 	if err != nil {
 		panic(err)
 	}

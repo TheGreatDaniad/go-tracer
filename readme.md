@@ -62,4 +62,4 @@ in this method the lighting of each point is calculated based on an interpolatio
 _Dec 30, 2023_
 
 Succeeded to apply smooth shading!
-![Alt text](./readme-images//5.png "Optional title")
+![Alt text](./readme-images//6.png "Optional title")

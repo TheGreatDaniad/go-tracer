@@ -58,3 +58,8 @@ _Dec 30, 2023_
 Tried to apply smooth shading based on Phong shading metho, but something is not right.
 in this method the lighting of each point is calculated based on an interpolation of face normal in comparison with the point and creates an illusion of smoothness.
 ![Alt text](./readme-images//5.png "Optional title")
+
+_Dec 30, 2023_
+
+Succeeded to apply smooth shading!
+![Alt text](./readme-images//5.png "Optional title")

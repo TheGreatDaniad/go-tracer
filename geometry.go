@@ -115,80 +115,103 @@ func ParseObjFile(filename string) (*Obj, error) {
 	}
 
 	newObj := &Obj{
-		Vertices: o.Vertices,
+		Vertices:           o.Vertices,
+		Normals:            make([]Normal, len(o.Vertices)), // Allocate space for vertex normals
+		TextureCoordinates: make([]TextureCoordinate, len(o.TextureCoordinates)),
+		Faces:              make([]Face, len(o.Faces)),
 	}
 
 	// Copy texture coordinates
-	for _, tc := range o.TextureCoordinates {
-		newObj.TextureCoordinates = append(newObj.TextureCoordinates, TextureCoordinate{
+	for i, tc := range o.TextureCoordinates {
+		newObj.TextureCoordinates[i] = TextureCoordinate{
 			U: tc.U,
 			V: tc.V,
-		})
-	}
-
-	// Check if normals are provided
-	normalsProvided := len(o.Normals) > 0
-
-	if normalsProvided {
-		for _, n := range o.Normals {
-			newObj.Normals = append(newObj.Normals, Normal{
-				X: float32(n.X),
-				Y: float32(n.Y),
-				Z: float32(n.Z),
-			})
 		}
 	}
 
+	// Initialize a slice to hold the accumulated normals for each vertex
+	accumulatedNormals := make([]vec3.T, len(o.Vertices))
+
+	// Initialize a counter for each vertex to count how many faces share the vertex
+	sharedFaces := make([]int, len(o.Vertices))
+
+	// Iterate over all faces to calculate face normals and accumulate them
 	for _, f := range o.Faces {
+		V1 := newObj.Vertices[f.VertexIndices[0]]
+		V2 := newObj.Vertices[f.VertexIndices[1]]
+		V3 := newObj.Vertices[f.VertexIndices[2]]
+
+		// Calculate the face normal
+		normal := calculateFaceNormal(V1, V2, V3)
+
+		// Accumulate the face normal to each vertex normal and increment the shared face count
+		for _, vIdx := range f.VertexIndices {
+			accumulatedNormals[vIdx] = *accumulatedNormals[vIdx].Add(&normal)
+			sharedFaces[vIdx]++
+		}
+	}
+
+	// Average the accumulated normals by the number of shared faces and assign them to newObj.Normals
+	for i := range newObj.Normals {
+		if sharedFaces[i] > 0 {
+			accumulatedNormals[i].Scale(1.0 / float32(sharedFaces[i]))
+			accumulatedNormals[i].Normalize() // Normalize the averaged normal
+			newObj.Normals[i] = Normal{X: accumulatedNormals[i][0], Y: accumulatedNormals[i][1], Z: accumulatedNormals[i][2]}
+		}
+	}
+
+	// Assign faces to newObj
+	for i, f := range o.Faces {
 		newFace := Face{
 			VertexIndices:            make([]int, len(f.VertexIndices)),
 			TextureCoordinateIndices: make([]int, len(f.TextureCoordinateIndices)),
-			NormalIndices:            make([]int, len(f.VertexIndices)), // Initialize with the length of VertexIndices
+			NormalIndices:            make([]int, len(f.VertexIndices)), // Initialize with the same length as VertexIndices
 		}
 		copy(newFace.VertexIndices, f.VertexIndices)
 		copy(newFace.TextureCoordinateIndices, f.TextureCoordinateIndices)
 
-		if !normalsProvided {
-			// Calculate normal for this face
-			normal := calculateFaceNormal(newObj.Vertices, newFace.VertexIndices)
-			normalIndex := len(newObj.Normals) // Index of the new normal
-			newObj.Normals = append(newObj.Normals, Normal{X: normal[0], Y: normal[1], Z: normal[2]})
-
-			// Assign the normal index to all vertices of the face
-			for i := range newFace.NormalIndices {
-				newFace.NormalIndices[i] = normalIndex
-			}
-		} else {
-			// If normals are provided, use the original indices
-			copy(newFace.NormalIndices, f.NormalIndices)
+		// Now, assign the corresponding vertex normal indices to the face
+		for j := range newFace.VertexIndices {
+			newFace.NormalIndices[j] = newFace.VertexIndices[j]
 		}
-
-		newObj.Faces = append(newObj.Faces, newFace)
+		newObj.Faces[i] = newFace
 	}
 
 	return newObj, nil
 }
-func calculateFaceNormal(vertices []vec3.T, vertexIndices []int) [3]float32 {
-	if len(vertexIndices) < 3 {
-		return [3]float32{0, 0, 0}
-	}
 
-	v0 := vertices[vertexIndices[0]]
-	v1 := vertices[vertexIndices[1]]
-	v2 := vertices[vertexIndices[2]]
-
-	edge1 := vec3.Sub(&v1, &v0)
-	edge2 := vec3.Sub(&v2, &v0)
-
-	normalVec := vec3.Cross(&edge1, &edge2)
-
-	normalVec.Normalize()
-
-	return [3]float32{normalVec[0], normalVec[1], normalVec[2]}
+// calculateFaceNormal assumes that the vertices are in counter-clockwise order
+func calculateFaceNormal(V1, V2, V3 vec3.T) vec3.T {
+	edge1 := vec3.Sub(&V2, &V1)
+	edge2 := vec3.Sub(&V3, &V1)
+	normal := vec3.Cross(&edge1, &edge2)
+	normal.Normalize()
+	return normal
 }
-func (f Face) Intersects(ray Ray, vertices []vec3.T) (bool, float32) {
+
+// func calculateFaceNormal(vertices []vec3.T, vertexIndices []int) [3]float32 {
+// 	if len(vertexIndices) < 3 {
+// 		return [3]float32{0, 0, 0}
+// 	}
+
+// 	v0 := vertices[vertexIndices[0]]
+// 	v1 := vertices[vertexIndices[1]]
+// 	v2 := vertices[vertexIndices[2]]
+
+// 	edge1 := vec3.Sub(&v1, &v0)
+// 	edge2 := vec3.Sub(&v2, &v0)
+
+// 	normalVec := vec3.Cross(&edge1, &edge2)
+
+// 	normalVec.Normalize()
+
+//		return [3]float32{normalVec[0], normalVec[1], normalVec[2]}
+//	}
+func (f Face) Intersects(ray Ray, vertices []vec3.T) (bool, float32, vec3.T) {
+	var intersectionPoint vec3.T // Declare the intersection point variable
+
 	if len(f.VertexIndices) < 3 {
-		return false, 0
+		return false, 0, intersectionPoint
 	}
 
 	v0 := vertices[f.VertexIndices[0]]
@@ -196,18 +219,18 @@ func (f Face) Intersects(ray Ray, vertices []vec3.T) (bool, float32) {
 	v2 := vertices[f.VertexIndices[2]]
 
 	// Edge vectors
-	e1 := (vec3.Sub(&v1, &v0))
+	e1 := vec3.Sub(&v1, &v0)
 	e2 := vec3.Sub(&v2, &v0)
 
 	// Begin calculating determinant - also used to calculate u parameter
 	pvec := vec3.Cross(&ray.Direction, &e2)
 
 	// If determinant is near zero, ray lies in plane of triangle
-	det := vec3.Dot(&pvec, &e1)
+	det := vec3.Dot(&e1, &pvec)
 
 	// NOT CULLING
 	if det > -float32(math.SmallestNonzeroFloat32) && det < float32(math.SmallestNonzeroFloat32) {
-		return false, 0
+		return false, 0, intersectionPoint
 	}
 	invDet := 1.0 / det
 
@@ -215,29 +238,33 @@ func (f Face) Intersects(ray Ray, vertices []vec3.T) (bool, float32) {
 	tvec := vec3.Sub(&ray.Origin, &v0)
 
 	// Calculate u parameter and test bound
-	u := vec3.Dot(&pvec, &tvec) * invDet
+	u := vec3.Dot(&tvec, &pvec) * invDet
 
 	// The intersection lies outside of the triangle
 	if u < 0.0 || u > 1.0 {
-		return false, 0
+		return false, 0, intersectionPoint
 	}
 
 	// Prepare to test v parameter
 	qvec := vec3.Cross(&tvec, &e1)
 
 	// Calculate V parameter and test bound
-	v := vec3.Dot(&qvec, &(ray.Direction)) * invDet
+	v := vec3.Dot(&ray.Direction, &qvec) * invDet
 
 	// The intersection lies outside of the triangle
 	if v < 0.0 || u+v > 1.0 {
-		return false, 0
+		return false, 0, intersectionPoint
 	}
 
-	t := vec3.Dot(&qvec, &e2) * invDet
+	t := vec3.Dot(&e2, &qvec) * invDet
 
+	// Calculate the exact point of intersection
 	if t > float32(math.SmallestNonzeroFloat32) {
-		return true, t
+		rs := ray.Direction.Scaled(t)
+		ip := ray.Origin.Add(&rs)
+		intersectionPoint = *ip
+		return true, t, intersectionPoint
 	}
 
-	return false, 0
+	return false, 0, intersectionPoint
 }

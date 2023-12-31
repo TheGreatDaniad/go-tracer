@@ -81,9 +81,9 @@ func (c Camera) Render(s *Space) {
 		for _, geometry := range s.Geometries {
 			Faces := (*geometry).GetGeometryData().Faces
 			for _, Face := range Faces {
-				intersects, dis := Face.Intersects(ray, (*geometry).GetGeometryData().Vertices)
+				intersects, dis, point := Face.Intersects(ray, (*geometry).GetGeometryData().Vertices)
 				if intersects {
-					intersection := RayFaceIntersection{IntersectionDistance: dis, Face: Face, Material: ((*geometry).GetGeometryData().Material), Geometry: *geometry}
+					intersection := RayFaceIntersection{IntersectionPoint: point, IntersectionDistance: dis, Face: Face, Material: ((*geometry).GetGeometryData().Material), Geometry: *geometry}
 					intersections = append(intersections, intersection)
 				}
 			}
